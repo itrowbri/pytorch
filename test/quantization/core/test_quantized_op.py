@@ -5431,7 +5431,7 @@ class TestQuantizedEmbeddingOps(TestCase):
                 compressed_indices_mapping=mapping,
                 include_last_offset=True,
             )
-            torch.testing.assert_close(reference, result, atol=0.005, rtol=1e-3)
+            self.assertEqual(reference, result, atol=0.005, rtol=1e-3)
 
         # Guard against incorrect kernel reuse across repeated keys, dimension
         # changes in both directions, and weight-key changes. This checks
