@@ -1253,9 +1253,9 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
             mock.patch.object(precompile_package, "_install_roots", return_value=()),
         ):
             self.assertTrue(is_library(name))
-        # On 3.11+ a frozen stdlib module also carries an absolute __file__, so
-        # the real zipimport never reaches the frozen table; a module dict
-        # without one (3.10, or no sys._stdlib_dir) does.
+        # A frozen stdlib module also carries an absolute __file__, so the real
+        # zipimport never reaches the frozen table; a module dict without one
+        # (no sys._stdlib_dir) does.
         loader = importlib.machinery.FrozenImporter
         spec = importlib.machinery.ModuleSpec("zipimport", loader, origin="frozen")
         frozen = types.ModuleType("zipimport")
@@ -1355,8 +1355,7 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
             and value.__name__ == name
             and not reads_a_builtin(DictGetItemSource(_BUILTINS_DICT, name), value)
         ]
-        heap_types = ["ExceptionGroup"] if sys.version_info >= (3, 11) else []
-        self.assertEqual(refused, heap_types)
+        self.assertEqual(refused, ["ExceptionGroup"])
 
     def test_dynamo_synthesized_covers_only_the_resume_function_list(self):
         synthesized = precompile_package._is_dynamo_synthesized
@@ -1504,9 +1503,7 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
 
         # A co_filename is not always a path: an exec-generated frame records
         # <string>, and so does a def exec'd under it, so realpath would resolve
-        # both against the cwd and waive a def whose bind no checksum covers
-        # (on 3.10 the <string> a fields-only dataclass compiles __init__ in
-        # collides the same way; from 3.11 co_qualname refuses it first). Only
+        # both against the cwd and waive a def whose bind no checksum covers. Only
         # absolute filenames compare; a relative one, spelled so that it does
         # resolve to this file from the cwd, and an embedded NUL on either side
         # fail closed instead of raising.
@@ -1545,12 +1542,11 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
         # nothing else fails closed, as does a class with no method of its own
         # and one whose only methods are generated: a fields-only dataclass's
         # and a NamedTuple's are defs of a factory (__create_fn__, namedtuple),
-        # so their code objects' own qualname carries <locals>. (on 3.10, where
-        # only co_name exists, the <string> or stdlib file they compile in
-        # refuses them), and an Enum's arrive under Enum. qualnames the key
-        # rule refuses. Members are unwrapped by type, never probed with
-        # getattr: a torch.classes proxy answers any attribute read by raising
-        # RuntimeError, and a class holding one is still judged.
+        # so their code objects' own qualname carries <locals>, and an Enum's
+        # arrive under Enum. qualnames the key rule refuses. Members are
+        # unwrapped by type, never probed with getattr: a torch.classes proxy
+        # answers any attribute read by raising RuntimeError, and a class
+        # holding one is still judged.
         class Ops:
             @staticmethod
             def op(x):
@@ -1621,7 +1617,7 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
         self.assertEqual((point.__module__, point.__qualname__), (__name__, "Point"))
         self.assertFalse(defined_where_read(point, "Point", _HERE))
         point = dataclasses.make_dataclass("Point", [("x", int)])
-        # 3.12+ stamps the caller's module on the class; 3.10/3.11 leave "types".
+        # 3.12+ stamps the caller's module on the class; 3.11 leaves "types".
         # Either way the bare qualname and library-compiled methods refuse it.
         self.assertEqual(point.__qualname__, "Point")
         self.assertFalse(defined_where_read(point, "Point", _HERE))
@@ -1694,8 +1690,7 @@ class TestPrecompilePackage(torch._inductor.test_case.TestCase):
         # stores the function under its own name, is pinned last.
         def minted(key, qualname):
             code = _user_op.__code__.replace(co_name=qualname.rpartition(".")[2])
-            if sys.version_info >= (3, 11):
-                code = code.replace(co_qualname=qualname)
+            code = code.replace(co_qualname=qualname)
             fn = types.FunctionType(code, globals(), "__annotate__")
             fn.__qualname__ = qualname
             return type("Cfg", (), {key: fn})

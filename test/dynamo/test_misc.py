@@ -56,7 +56,6 @@ from torch._dynamo.testing import (
     CompileCounterWithBackend,
     expectedFailureDynamic,
     same,
-    skipIfNotPy311,
     unsupported,
 )
 from torch._dynamo.utils import call_size, counters, ifdynstaticdefault
@@ -11377,7 +11376,6 @@ not ___dict_contains('cccccccc', G['sys'].modules)""",
     # NOTE this test can be removed once multiline errors are in Python.
     # See https://github.com/python/cpython/issues/106922
     # Covered by test_logging.py:test_trace_call* tests in 3.13+
-    @skipIfNotPy311
     @unittest.skipIf(sys.version_info >= (3, 13), "feature landed in 3.13")
     def test_get_instruction_source_311(self):
         def f():
@@ -18106,7 +18104,6 @@ fn
 
         Foo.test_default_update(self)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "Python 3.11+")
     def test_RAISE_VARARGS_0(self):
         def foo():
             try:

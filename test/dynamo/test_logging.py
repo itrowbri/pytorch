@@ -11,11 +11,7 @@ import torch
 import torch._dynamo.test_case
 import torch._dynamo.testing
 import torch.distributed as dist
-from torch._dynamo.testing import (
-    empty_line_normalizer,
-    extract_graph_and_tracker,
-    skipIfNotPy311,
-)
+from torch._dynamo.testing import empty_line_normalizer, extract_graph_and_tracker
 from torch._dynamo.trace_rules import _as_posix_path
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.testing._internal.common_cuda import SM90OrLater
@@ -225,13 +221,13 @@ class LoggingTests(LoggingTestCase):
         self.assertIn(
             """\
     - User stack trace:
-    -   File [file_path], line 199, in outmost_fn
+    -   File [file_path], line 195, in outmost_fn
     -     return outer_fn(x, ys, zs)
-    -   File [file_path], line 202, in outer_fn
+    -   File [file_path], line 198, in outer_fn
     -     return fn(x, ys, zs)
-    -   File [file_path], line 205, in fn
+    -   File [file_path], line 201, in fn
     -     return inner(x, ys, zs)
-    -   File [file_path], line 208, in inner
+    -   File [file_path], line 204, in inner
     -     for y, z in zip(ys, zs):""",
             record_str,
         )
@@ -1121,7 +1117,6 @@ print("arf")
         self.assertIn("[rank0]:", normalized)
         self.assertIn("woof", normalized)
 
-    @skipIfNotPy311
     @make_logging_test(trace_call=True)
     def test_trace_call(self, records):
         def fn(x, y):
@@ -1154,7 +1149,6 @@ print("arf")
                    ~~~~~~~~^~~~~~~~~""",
         )
 
-    @skipIfNotPy311
     @make_logging_test(trace_call=True)
     def test_trace_call_prefix(self, records):
         def fn(x, y):
@@ -1172,7 +1166,6 @@ TRACE FX call mul from test_logging.py:N in fn (LoggingTests.test_trace_call_pre
                     ~~^~~""",
         )
 
-    @skipIfNotPy311
     @make_logging_test(trace_call=True)
     def test_trace_call_inline_call(self, records):
         def g(x):
@@ -1209,7 +1202,6 @@ TRACE FX call mul from test_logging.py:N in fn (LoggingTests.test_trace_call_pre
         #            ~^^^^^^""",
         # )
 
-    @skipIfNotPy311
     @make_logging_test(trace_call=True)
     def test_trace_call_graph_break(self, records):
         def fn(x):

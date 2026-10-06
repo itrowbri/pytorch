@@ -6413,7 +6413,7 @@ class GraphModule(torch.nn.Module):
     def test_method_vt_dunder_get_matches_eager(self):
         """method.__get__ follows the running interpreter and wrap_descr_get.
 
-        3.10 and 3.13+ have method.__get__, which returns the method unchanged;
+        3.13+ has method.__get__, which returns the method unchanged;
         3.11 and 3.12 do not, so the attribute forwards to __func__ and re-binds.
         Either way the arguments are checked as wrap_descr_get checks them.
         """

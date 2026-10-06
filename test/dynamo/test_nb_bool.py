@@ -3,8 +3,6 @@
 
 import collections
 import enum
-import sys
-import unittest
 
 import torch
 
@@ -132,12 +130,6 @@ class NbBoolTests(TestCase):
     @make_dynamo_test
     def test_nonempty_deque(self):
         self.assertEqual(bool(collections.deque([1, 2])), True)
-
-    @unittest.skipIf(sys.version_info >= (3, 11), "deque lost nb_bool in 3.11")
-    @make_dynamo_test
-    def test_deque_dunder_bool(self):
-        self.assertEqual(collections.deque().__bool__(), False)
-        self.assertEqual(collections.deque([1, 2]).__bool__(), True)
 
     # --- dict subclasses ---
 

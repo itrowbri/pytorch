@@ -8,7 +8,7 @@ import unittest
 import torch
 import torch._dynamo.test_case
 from torch._dynamo import bytecode_analysis, bytecode_transformation
-from torch._dynamo.testing import skipIfNotPy311, skipIfNotPy312
+from torch._dynamo.testing import skipIfNotPy312
 
 
 def coalesced_co_lines(code):
@@ -47,7 +47,6 @@ class BytecodeTests(torch._dynamo.test_case.TestCase):
         )
         self.assertIs(code_options["co_consts"][1], equal_but_distinct)
 
-    @skipIfNotPy311
     def test_linetable_311_writer1(self):
         def fn():
             a = 10
@@ -70,7 +69,6 @@ class BytecodeTests(torch._dynamo.test_case.TestCase):
             self.assertEqual(p1, p2)
         self.assertEqual(coalesced_co_lines(fn.__code__), coalesced_co_lines(result[1]))
 
-    @skipIfNotPy311
     def test_linetable_311_writer2(self):
         """
         test large ops (LOAD_METHOD) and EXTENDED_ARGS
@@ -122,22 +120,6 @@ def fn():
         for ep, ap in zip(expected_positions, actual_positions):
             self.assertEqual(ep, ap)
 
-    @unittest.skipIf(
-        sys.version_info >= (3, 11),
-        "linetable test for Python 3.10",
-    )
-    def test_linetable_310_writer(self):
-        def fn():
-            a = 10
-            b = 20
-            c = a + b
-            f = "linetable_writer"
-            return f"Test if {f} generates correct co_linetable: {c}"
-
-        inst = dis.get_instructions(fn)
-        result = bytecode_transformation.assemble(inst, fn.__code__.co_firstlineno)
-        self.assertTrue(result[1] == fn.__code__.co_linetable)
-
     def test_if_tensor_is_none(self):
         """
         Python 3.11 adds new jump instructions that check if
@@ -155,12 +137,10 @@ def fn():
         opt_f = torch.compile(f, backend="eager", fullgraph=True)
         self.assertEqual(opt_f(None, torch.ones(2)), 6)
 
-        if sys.version_info >= (3, 11):
-            insts = bytecode_transformation.cleaned_instructions(f.__code__)
-            for inst in insts:
-                self.assertNotIn("_NONE", inst.opname)
+        insts = bytecode_transformation.cleaned_instructions(f.__code__)
+        for inst in insts:
+            self.assertNotIn("_NONE", inst.opname)
 
-    @skipIfNotPy311
     def test_py311_jump_offset(self):
         new_inst = bytecode_transformation.create_instruction
         consts = (None, 1, 2, 3, 4)
@@ -279,7 +259,6 @@ def fn():
                 break
         self.assertEqual(nums, nums_new)
 
-    @skipIfNotPy311
     def test_exception_table_parsing(self):
         def fn():
             try:
@@ -298,7 +277,6 @@ def fn():
         b = bytecode_transformation.assemble_exception_table(tab)
         self.assertEqual(b, fn.__code__.co_exceptiontable)
 
-    @skipIfNotPy311
     def test_exception_table_e2e(self):
         def fn():
             try:
@@ -317,7 +295,6 @@ def fn():
         code, _ = bytecode_transformation.transform_code_object(fn.__code__, nothing)
         self.assertEqual(code.co_exceptiontable, fn.__code__.co_exceptiontable)
 
-    @skipIfNotPy311
     def test_exception_table_e2e_2(self):
         # last instructions of an exn_table entry is a large instruction
         # i.e., LOAD_GLOBAL a
@@ -333,7 +310,6 @@ def fn():
         code, _ = bytecode_transformation.transform_code_object(fn.__code__, nothing)
         self.assertEqual(code.co_exceptiontable, fn.__code__.co_exceptiontable)
 
-    @skipIfNotPy311
     def test_exception_table_entry_propagation(self):
         insts = []
         for _ in range(10):
@@ -362,7 +338,6 @@ def fn():
             self.assertIsNotNone(inst.exn_tab_entry)
             self.assertIs(inst.exn_tab_entry.target, insts[exp])
 
-    @skipIfNotPy311
     def test_compute_exception_table_nested(self):
         insts = []
         for _ in range(20):
@@ -410,7 +385,6 @@ def fn():
             self.assertEqual(entry.end, exp[1] * 2)
             self.assertEqual(entry.target, exp[2] * 2)
 
-    @skipIfNotPy311
     def test_remove_dead_code_with_exn_table_entries(self):
         create_instruction = bytecode_transformation.create_instruction
         target1 = create_instruction("NOP")
@@ -463,7 +437,6 @@ def fn():
                     self.assertIsNone(inst.arg)
             self.assertFalse(inst.opname.startswith("RETURN"))
 
-    @skipIfNotPy311
     def test_bytecode_from_template_noprefix(self):
         # Test that 3.11+ prefix instructions are removed
         def gen_fn():
@@ -510,9 +483,6 @@ def fn():
                 self.assertIn("JUMP", i1.opname)
                 self.assertIs(i1.target, insts[-1])
 
-    # Should work with 3.10, but testing with 3.11+ is sufficient.
-    # In 3.8, `fn` ends with a RETURN_VALUE.
-    @skipIfNotPy311
     def test_bytecode_from_template_noreturn2(self):
         # Test function that doesn't end with RETURN_VALUE
         def fn():

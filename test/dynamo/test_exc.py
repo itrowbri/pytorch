@@ -581,10 +581,9 @@ Failed Source Expressions:
 """,
         )
 
-        if sys.version_info >= (3, 11):
-            self.assertExpectedInline(
-                result,
-                """\
+        self.assertExpectedInline(
+            result,
+            """\
   File "<source_path>", line 1
     value = (
             ~
@@ -595,7 +594,7 @@ Failed Source Expressions:
     )
     ~
 """,
-            )
+        )
 
     def test_user_stack_repeated_frames_are_compacted(self):
         frame = traceback.FrameSummary("recursive.py", 1, "fn", line="return fn()")
@@ -605,7 +604,6 @@ Failed Source Expressions:
         self.assertEqual(result.count('File "recursive.py", line 1, in fn'), 3)
         self.assertIn("[Previous line repeated 7 more times]", result)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_tabbed_source_caret_alignment(self):
         filename = f"{__file__}.tabbed"
         source = "return\tgn()\n"
@@ -634,7 +632,6 @@ Failed Source Expressions:
             len(marker_line) - len(marker_line.lstrip()), source_line.index("gn()")
         )
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_wide_unicode_source_caret_alignment(self):
         filename = f"{__file__}.wide"
         source = '    return "\U0001f600" + gn()\n'
@@ -664,7 +661,6 @@ Failed Source Expressions:
             source_line.index("gn()") + 1,
         )
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_zero_width_unicode_source_caret_alignment(self):
         # (source, display columns minus code points before "gn()")
         cases = [
@@ -702,7 +698,6 @@ Failed Source Expressions:
                     source_line.index("gn()") + column_delta,
                 )
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_multiline_variable_width_source(self):
         filename = f"{__file__}.multiline"
         source_lines = [
@@ -731,7 +726,6 @@ Failed Source Expressions:
         self.assertNotIn("\t", result)
         self.assertGreater(result.count("^"), 0)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_multiline_statement_range_shows_first_line(self):
         # Python 3.11 gives FOR_ITER a range spanning the whole loop body.
         filename = f"{__file__}.statement"
@@ -756,7 +750,6 @@ Failed Source Expressions:
         self.assertNotIn("~", result)
         self.assertNotIn("^", result)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_long_multiline_range_is_bounded(self):
         filename = f"{__file__}.long"
         source_lines = ["class Foo:\n"] + [
@@ -785,7 +778,6 @@ Failed Source Expressions:
         self.assertNotIn("sentinel_15", result)
         self.assertLessEqual(len(result.splitlines()), 10)
 
-    @unittest.skipIf(sys.version_info < (3, 11), "requires column metadata")
     def test_user_stack_long_tabbed_range_omits_misaligned_marker(self):
         filename = f"{__file__}.long_tabbed"
         source_lines = ["value\t= (\n"] + ["    0,\n"] * 5 + [")\n"]

@@ -23,7 +23,7 @@ from torch._dynamo.exc import (
     TorchRuntimeError,
     Unsupported,
 )
-from torch._dynamo.testing import skipIfNotPy311, skipIfNotPy312, skipIfOnlyNotPy312
+from torch._dynamo.testing import skipIfNotPy312, skipIfOnlyNotPy312
 from torch._dynamo.utils import counters
 from torch.testing._internal.common_utils import IS_FBCODE, IS_S390X, munge_exc
 from torch.testing._internal.logging_utils import LoggingTestCase, make_logging_test
@@ -290,19 +290,18 @@ Backend compiler exception
  For more details about this graph break, please visit: https://meta-pytorch.github.io/compile-graph-break-site/gb/gb0219.html""",
         )
 
-        if sys.version_info >= (3, 11):
-            msg_with_carets = munge_exc(
-                cm.exception,
-                suppress_suffix=True,
-                strip_carets=False,
-            )
-            self.assertIn(
-                """\
+        msg_with_carets = munge_exc(
+            cm.exception,
+            suppress_suffix=True,
+            strip_carets=False,
+        )
+        self.assertIn(
+            """\
       File "test_error_messages.py", line N, in fn
         return x + 1
         ^^^^^^^^^^^^""",
-                msg_with_carets,
-            )
+            msg_with_carets,
+        )
 
     @make_logging_test()
     def test_backend_fake_tensor_exc_no_warning(self, records):
@@ -1329,10 +1328,9 @@ User code traceback:
         msg = re.sub(r"line (\d+)", "line N", msg)
         # remove carets
         msg = re.sub(r"\n\s*~*\^+\n", "\n", msg)
-        # normalize multi-line raise: 3.10 only shows the first line,
-        # 3.11+ shows the full statement. Replace either form with a single line.
+        # collapse the multi-line raise statement into a single line
         msg = re.sub(
-            r"    raise e\.with_traceback\((?:.*\) from e\.__cause__  # User compiler error|[^\n]*)",
+            r"    raise e\.with_traceback\(.*\) from e\.__cause__  # User compiler error",
             "    raise e.with_traceback(None) from e.__cause__  # User compiler error",
             msg,
             flags=re.DOTALL,
@@ -1364,7 +1362,6 @@ Set TORCHDYNAMO_VERBOSE=1 for the internal stack trace (please do this especiall
 """,
         )
 
-    @skipIfNotPy311
     def test_from_user_code_traceback_carets(self):
         def gn():
             torch._dynamo.graph_break()
@@ -1400,7 +1397,6 @@ from user code:
     ~~~~~~~~~~~~~~~~~~~~~~~~~^^""",
         )
 
-    @skipIfNotPy311
     def test_tensor_item_graph_break_warning_caret_points_to_item(self):
         from torch._dynamo.variables.tensor import TensorVariable
 
