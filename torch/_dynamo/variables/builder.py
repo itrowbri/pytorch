@@ -3158,12 +3158,11 @@ class VariableBuilder:
 
         if (
             safe_has_grad(value)
-            and safe_grad(value) is not None
-            # type: ignore[attr-defined]
-            and value.dtype != safe_grad(value).dtype
+            and (grad_value := safe_grad(value)) is not None
+            and value.dtype != grad_value.dtype
+            and (not value.is_leaf or value.grad_dtype not in (None, grad_value.dtype))
         ):
-            safe_grad_val = safe_grad(value)
-            grad_str = str(safe_grad_val.dtype) if safe_grad_val is not None else "None"
+            grad_str = str(grad_value.dtype)
             unimplemented(
                 gb_type="dtype mismatch between tensor and its gradient",
                 context=f"tensor dtype: {value.dtype}; grad dtype: {grad_str}",
