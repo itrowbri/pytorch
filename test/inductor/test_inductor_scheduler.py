@@ -957,6 +957,53 @@ class TestScheduler(TestCase):
                 expected,
             )
 
+    def test_mix_order_benchmark_uses_codegen_split_size(self):
+        """benchmark_mix_order_reduction times the mix-order kernel at the
+        split size codegen_mix_order_reduction picks, including autotuning."""
+        scheduling = object.__new__(SIMDScheduling)
+        node = Mock(node1=self._mock_base_snode("node1"))
+        split_sizes = []
+
+        def create_kernel(kernel_features, split_size):
+            split_sizes.append(split_size)
+            return Mock(fixed_config=None, rsplit_size=split_size)
+
+        simd = "torch._inductor.codegen.simd"
+        with (
+            patch(
+                "torch._inductor.scheduler.MixOrderReduction.get_numel_rnumel",
+                return_value=(4096, 128),
+            ),
+            patch("torch._inductor.scheduler._LoopStateSnapshot.create"),
+            patch.multiple(
+                SIMDScheduling,
+                _split_mix_order_reduction_epilogue=Mock(return_value=([], [])),
+                _mix_order_kernel_features=Mock(return_value=([], Mock())),
+                _mix_order_split_size=Mock(return_value=16),
+                _create_kernel_for_mix_order_reduction=Mock(side_effect=create_kernel),
+                _generate_kernel_code_for_mix_order_reduction=Mock(
+                    return_value=("ws", "src")
+                ),
+                benchmark_codegened_module=Mock(return_value=(1.0, "path")),
+            ),
+            patch(f"{simd}.PyCodeCache.load"),
+            patch(
+                f"{simd}.CoordescTuner.autotune_single_field", return_value=64
+            ) as autotune,
+            inductor_config.patch(
+                {
+                    "deterministic": False,
+                    "triton.mix_order_reduction_split_size": None,
+                    "triton.mix_order_reduction_autotune_split_size": True,
+                }
+            ),
+        ):
+            self.assertEqual(
+                scheduling.benchmark_mix_order_reduction(node), (1.0, "path")
+            )
+        autotune.assert_called_once()
+        self.assertEqual(split_sizes[-1], 64)
+
     def test_nested_reduction_fuse_with_propagates_mempool(self):
         scheduler = object.__new__(Scheduler)
         node1 = self._mock_base_snode("node1")
