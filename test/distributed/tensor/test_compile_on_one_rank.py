@@ -21,10 +21,9 @@ from torch.fx.experimental.proxy_tensor import make_fx
 from torch.testing._internal.common_utils import (
     instantiate_parametrized_tests,
     parametrize,
+    requires_multigpu,
     run_tests,
-    skip_but_pass_in_sandcastle_if,
     skipIfXpu,
-    TEST_MULTIACCELERATOR,
     TEST_WITH_DEV_DBG_ASAN,
     TestCase,
 )
@@ -334,9 +333,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             f"dynamo baked a rank-specific device into its output graph: {baked}",
         )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_runtime_follows_current_device_not_input(self):
         # The runtime device follows the process's current device, not the input's.
@@ -494,9 +491,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                     torch.randn(2, device=f"{device_type}:0")
                 )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_noncurrent_device_tensor_rejected(self):
         # CooR rejects a device *operand* that isn't the current accelerator (see
@@ -514,9 +509,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                     torch.randn(4, device=f"{device_type}:1")
                 )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_graph_code_identical_across_devices(self):
         # The functional FX graph text (.code) must be byte-identical across ranks: the
@@ -533,9 +526,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(code0, code1)
         self.assertNotIn(f"{device_type}:", code0)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_dynamo_output_graph_identical_across_devices(self):
         # The Dynamo counterpart of test_graph_code_identical_across_devices, and the
@@ -602,9 +593,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             f"guard did not use the current device: {parts}",
         )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_guard_still_rejects_noncurrent_device_index_under_coor(self):
         # Relaxing the index must not mean ignoring it: a tensor on a device that is
@@ -636,9 +625,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             with self.assertRaisesRegex(RuntimeError, "current accelerator"):
                 compiled(other)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_noncurrent_device_input_refused_under_coor(self) -> None:
         # A graph whose input is on an accelerator other than the current one cannot be
@@ -657,9 +644,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                     torch.randn(4, device=f"{device_type}:1")
                 )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_guard_hits_when_current_device_changes_under_coor(self):
         # The whole point of the relaxation: one compiled artifact serves every rank.
@@ -691,9 +676,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             "a tensor on the new current device should reuse the existing compile",
         )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @patch.object(torch._dynamo.config, "use_recursive_dict_tags_for_guards", True)
     def test_dict_tag_fast_path_tracks_current_device_under_coor(self):
@@ -741,9 +724,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             del mod._coor_tag_bust
             self.assertFalse(root.check(scope))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_cloned_tensor_guard_tracks_current_device_under_coor(self):
         from torch._dynamo.eval_frame import _debug_get_cache_entry_list
@@ -762,9 +743,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             inputs = {"x": torch.zeros(1, device=f"{device_type}:1")}
             self.assertTrue(cloned_root.check(inputs))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("origin", ("input", "intermediate"))
     def test_device_passthrough_still_reuses_compile_under_coor(self, origin):
@@ -837,9 +816,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             relaxed, [], f"a cpu tensor's guard must not be relaxed: {relaxed}"
         )
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     def test_device_index_still_guarded_without_coor(self):
         # Multi-GPU in one process is legal outside CooR (e.g. model parallel), so the
         # relaxation must be gated: with the feature off, the index stays baked and a
@@ -1013,9 +990,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             _, codes = run_and_get_code(compiled, *inputs)
         return "\n".join(codes)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize(
         "path",
@@ -1241,9 +1216,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         x = torch.zeros(1, device=device_type)
         self.assertEqual(torch.compile(f)(x), f(x))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_current_device_context_under_coor(self):
         from torch._dynamo.testing import CompileCounterWithBackend
@@ -1306,9 +1279,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         with self.assertRaisesRegex(RuntimeError, "boom"):
             torch.compile(raises, backend="eager")(x)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_current_device_context_survives_graph_break_rank_relatively(self):
         # The resumed frame must stay on the running rank's device. The artifact is
@@ -1331,9 +1302,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                 self.assertEqual(out.device, torch.device(device_type, dev))
         self.assertEqual(cnt.frame_count, 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_set_device_is_an_error_under_coor(self):
         # Device contexts are traced as no-ops on the strength of CooR's one
@@ -1362,9 +1331,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                     ):
                         torch.compile(f, backend="eager")(x, setter, target)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_current_device_context_reconstruct_is_rank_relative(self):
         # Pinning target_values to the compiling rank (torch.device("cuda:0")) passes
@@ -1382,9 +1349,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
                 ctx = compiled(torch.zeros(1, device=f"{device_type}:{dev}"))
                 self.assertEqual(ctx.idx, dev)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_constant_device_context_is_an_error_under_coor(self):
         # A constant device context bakes the compiling rank's index into the graph
@@ -1428,9 +1393,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             out = torch.compile(f, backend="eager", fullgraph=True)(x)
             self.assertEqual(out.device, torch.device(f"{device_type}", 0))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("stream_kind", (device_type, "generic"))
     @parametrize("use_kwarg", (True, False))
@@ -1466,9 +1429,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
 
         self.assertEqual(cnt.frame_count, 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize(
         "origin",
@@ -1522,9 +1483,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
 
         self.assertEqual(cnt.frame_count, 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("stream_kind", ("generic", device_type))
     @parametrize("comparison", ("eq", "ne"))
@@ -1565,9 +1524,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
 
         self.assertEqual(cnt.frame_count, 2)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("stream_kind", ("generic", device_type))
     def test_other_device_current_stream_under_coor(self, stream_kind):
@@ -1649,9 +1606,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         stream = torch.Stream()
         self.assertEqual(compiled(x, stream), f(x, stream))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("stream_kind", ("generic", device_type))
     def test_nested_current_device_stream_observation_under_coor(self, stream_kind):
@@ -1957,9 +1912,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self._assert_no_baked_device(code)
         self.assertEqual(sorted(out.tolist()), list(range(8)))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @skipIfXpu(
         msg="inductor cudagraphs is CUDA-only, https://github.com/intel/torch-xpu-ops/issues/5338"
     )
@@ -1981,9 +1934,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(out.device, torch.device(f"{device_type}:1"))
         self.assertEqual(out, ref)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_inductor_runs_on_nonzero_device(self):
         # Problem 2 (runtime): a graph compiled under CooR must run on a rank's own
@@ -1997,9 +1948,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             out = compiled(torch.randn(2, 8, device=f"{device_type}:1"))
         self.assertEqual(out.device, torch.device(f"{device_type}:1"))
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_inductor_compiled_on_one_device_runs_on_another(self):
         # Problem 3 (shareable artifact): a graph first compiled on cuda:0 must produce a
@@ -2043,9 +1992,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(out.device, torch.device(f"{device_type}:1"))
         self.assertEqual(out, ref)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_inductor_shared_kernel_reused_in_process_across_devices(self):
         # A rank only ever drives one device, but CooR's kernel cache key is
@@ -2078,9 +2025,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(out0, ref0)
         self.assertEqual(out1, ref1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_user_defined_triton_kernel_reused_in_process_across_devices(self):
         # Same cross-device reuse as the test above, for a user-defined triton.jit
@@ -2114,9 +2059,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(out0, inp0 + 1)
         self.assertEqual(out1, inp1 + 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     def test_device_passthrough_custom_backend_tracks_current_device_under_coor(self):
         from torch._dynamo.testing import CompileCounter
@@ -2137,9 +2080,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
         self.assertEqual(cnt.frame_count, 1)
         self.assertEqual(actual.device, expected.device)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("origin", ("input", "factory"))
     def test_device_observations_track_current_device_under_coor(self, origin):
@@ -2167,9 +2108,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
 
         self.assertEqual(cnt.frame_count, 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("consumer", ("synchronize", "current_stream", "get_device_module"))
     def test_current_device_consumers_under_coor(self, consumer):
@@ -2182,7 +2121,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
             if consumer == "current_stream":
                 return x + 1, torch.accelerator.current_stream(x.device)
             module = torch.get_device_module(x.device)
-            return x + (1 if module is torch.accelerator else 2)
+            return x + (1 if module is device_module else 2)
 
         cnt = CompileCounter()
         torch._dynamo.reset()
@@ -2203,9 +2142,7 @@ class TestCompileOnOneRankDeviceAsParameter(TestCase):
 
         self.assertEqual(cnt.frame_count, 1)
 
-    @skip_but_pass_in_sandcastle_if(
-        not TEST_MULTIACCELERATOR, "test requires 2+ accelerators"
-    )
+    @requires_multigpu
     @compiler_config.patch(compile_on_one_rank=True)
     @parametrize("origin", ("input", "intermediate"))
     def test_get_device_tracks_current_device_under_coor(self, origin):
